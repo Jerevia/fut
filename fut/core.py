@@ -12,6 +12,7 @@ import json
 import random
 import re
 import time
+import base64
 
 import pyotp
 import requests
@@ -184,6 +185,15 @@ def itemParse(item_data, full=True):
 #     return requests.get(url, timeout=timeout).json()
 
 
+def __get_message_url_res_json(timeout=timeout):
+    rc = requests.get(messages_url, timeout=timeout)
+    rc.encoding = 'utf-8'
+    return {
+            base64.b64decode(
+                k).decode('utf-8'): base64.b64decode(
+                    v).decode('utf-8') for k, v in rc.json().items()}
+
+
 # TODO: optimize messages (parse whole messages once!), xml parser might be faster
 # TODO: parse more data (short club names etc.)
 def nations(timeout=timeout):
@@ -191,14 +201,13 @@ def nations(timeout=timeout):
 
     :params year: Year.
     """
-    rc = requests.get(messages_url, timeout=timeout)
-    rc.encoding = 'utf-8'  # guessing takes huge amount of cpu time
-    rc = rc.text
-    data = re.findall('"search.nationName.nation([0-9]+)": "(.+)"', rc)
-    nations = {}
-    for i in data:
-        nations[int(i[0])] = i[1]
-    return nations
+    return {
+        int(
+            re.sub(
+                'search.nationName.nation', '', k
+            )): v for k, v in __get_message_url_res_json().items(
+                ) if re.match(
+                    "search.nationName.nation([0-9]+)", k)}
 
 
 def leagues(year=2019, timeout=timeout):
@@ -206,14 +215,13 @@ def leagues(year=2019, timeout=timeout):
 
     :params year: Year.
     """
-    rc = requests.get(messages_url, timeout=timeout)
-    rc.encoding = 'utf-8'  # guessing takes huge amount of cpu time
-    rc = rc.text
-    data = re.findall('"global.leagueFull.%s.league([0-9]+)": "(.+)"' % year, rc)
-    leagues = {}
-    for i in data:
-        leagues[int(i[0])] = i[1]
-    return leagues
+    return {
+        int(
+            re.sub(
+                "global.leagueFull.%s.league" % year, '', k
+            )): v for k, v in __get_message_url_res_json().items(
+                ) if re.match(
+                    "global.leagueFull.%s.league([0-9]+)" % year, k)}
 
 
 def teams(year=2019, timeout=timeout):
@@ -221,14 +229,13 @@ def teams(year=2019, timeout=timeout):
 
     :params year: Year.
     """
-    rc = requests.get(messages_url, timeout=timeout)
-    rc.encoding = 'utf-8'  # guessing takes huge amount of cpu time
-    rc = rc.text
-    data = re.findall('"global.teamFull.%s.team([0-9]+)": "(.+)"' % year, rc)
-    teams = {}
-    for i in data:
-        teams[int(i[0])] = i[1]
-    return teams
+    return {
+        int(
+            re.sub(
+                'global.teamabbr15.%s.team' % year, '', k
+            )): v for k, v in __get_message_url_res_json().items(
+                ) if re.match(
+                    'global.teamabbr15.%s.team([0-9]+)' % year, k)}
 
 
 def stadiums(year=2019, timeout=timeout):
@@ -236,33 +243,33 @@ def stadiums(year=2019, timeout=timeout):
 
     :params year: Year.
     """
-    rc = requests.get(messages_url, timeout=timeout)
-    rc.encoding = 'utf-8'  # guessing takes huge amount of cpu time
-    rc = rc.text
-    data = re.findall('"global.stadiumFull.%s.stadium([0-9]+)": "(.+)"' % year, rc)
-    stadiums = {}
-    for i in data:
-        stadiums[int(i[0])] = i[1]
-    return stadiums
+    return {
+        int(
+            re.sub(
+                'global.stadiumFull.%s.stadium' % year, '', k
+            )): v for k, v in __get_message_url_res_json().items(
+                ) if re.match(
+                    'global.stadiumFull.%s.stadium([0-9]+)' % year, k)}
 
 
 def balls(timeout=timeout):
     """Return all balls in dict {id0: ball0, id1: ball1}."""
-    rc = requests.get(messages_url, timeout=timeout)
-    rc.encoding = 'utf-8'  # guessing takes huge amount of cpu time
-    rc = rc.text
-    data = re.findall('"BallName_([0-9]+)": "(.+)"', rc)
-    balls = {}
-    for i in data:
-        balls[int(i[0])] = i[1]
-    return balls
+
+    return {
+        int(
+            re.sub(
+                'BallName_', '', k
+            )): v for k, v in __get_message_url_res_json().items(
+                ) if re.match(
+                    'BallName_([0-9]+)', k)}
 
 
 def players(timeout=timeout):
     """Return all players in dict {id: c, f, l, n, r}.
     id, rank, nationality(?), first name, last name.
     """
-    rc = requests.get('{0}{1}.json'.format(card_info_url, 'players'), timeout=timeout).json()
+    rc = requests.get(
+        '{0}{1}.json'.format(card_info_url, 'players'), timeout=timeout).json()
     players = {}
     for i in rc['Players'] + rc['LegendsPlayers']:
         players[i['id']] = {'id': i['id'],
@@ -278,14 +285,13 @@ def playstyles(year=2019, timeout=timeout):
 
     :params year: Year.
     """
-    rc = requests.get(messages_url, timeout=timeout)
-    rc.encoding = 'utf-8'  # guessing takes huge amount of cpu time
-    rc = rc.text
-    data = re.findall('"playstyles.%s.playstyle([0-9]+)": "(.+)"' % year, rc)
-    playstyles = {}
-    for i in data:
-        playstyles[int(i[0])] = i[1]
-    return playstyles
+    return {
+        int(
+            re.sub(
+                'playstyles.%s.playstyle' % year, '', k
+            )): v for k, v in __get_message_url_res_json().items(
+                ) if re.match(
+                    'playstyles.%s.playstyle([0-9]+)' % year, k)}
 
 
 class Core(object):
